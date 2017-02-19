@@ -335,10 +335,20 @@ class Sender:
 		elif rexx.abbrev("LOAD",cmd,2):
 			self.load(line[1])
 
+		# CLEAR: clear the loaded file/gcode
+		elif cmd == "CLEAR_GCODE":
+			self.performNewFile(True)
+
 		# OPEN: open serial connection to grbl
 		# CLOSE: close serial connection to grbl
 		elif cmd in ("OPEN","CLOSE"):
-			self.openClose()
+			if len(line)>2:
+				comport = line[1]
+				baudrate = line[2]
+				self.openClose2(comport, baudrate)
+			else:
+				print("closing")
+				self.openClose()
 
 		# QU*IT: quit program
 		# EX*IT: exit program
@@ -493,6 +503,17 @@ class Sender:
 		Utils.addRecent(filename)
 
 	#----------------------------------------------------------------------
+	def setComPort(self, comport, baudrate):
+		serialPage = Page.frames["Serial"]
+		device	 = _device or serialPage.portCombo.get()
+		baudrate = _baud   or serialPage.baudCombo.get()
+		if self.open(device, baudrate):
+			serialPage.connectBtn.config(text=_("Close"),
+						background="Salmon",
+						activebackground="Salmon")
+			self.enable()
+
+	#----------------------------------------------------------------------
 	def save(self, filename):
 		fn,ext = os.path.splitext(filename)
 		ext = ext.lower()
@@ -560,6 +581,10 @@ class Sender:
 			pass
 		time.sleep(1)
 		self.serial.write(b"\n\n")
+		CNC.vars["_OvChanged"] = True
+		CNC.vars["OvFeed"] = 100
+		CNC.vars["OvSpindle"] = 100
+		CNC.vars["OvRapid"] = 100
 		self._gcount = 0
 		self._alarm  = True
 		self.thread  = threading.Thread(target=self.serialIO)

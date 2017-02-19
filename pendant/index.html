@@ -1,421 +1,744 @@
+<!DOCTYPE html>
 <html>
+
 <head>
-<title>bCNC Pendant</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="stylesheet" type="text/css" href="pure-min.css" />
-<script type="text/javascript" src="jquery-2.1.4.min.js" ></script>
-<script type="text/javascript" src="fastclick.js"></script>
+	<title>bCNC Pendant</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<link rel="stylesheet" type="text/css" href="assets/tether/tether.min.css" />
+	<link rel="stylesheet" type="text/css" href="assets/bootstrap/bootstrap.min.css" />
+	<link rel="stylesheet" type="text/css" href="assets/font-awesome/css/font-awesome.min.css" />
+	<link rel="stylesheet" type="text/css" href="assets/index.css" />
+	<script type="text/javascript" src="assets/jquery-2.1.4.min.js"></script>
+	<script type="text/javascript" src="assets/tether/tether.min.js"></script>
+	<script type="text/javascript" src="assets/bootstrap/bootstrap.min.js"></script>
+	<script type="text/javascript" src="assets/fastclick.js"></script>
 
-<script type="text/javascript">
-	/* set up all functions */
-	var rpmmax = 12000;
-	var xmlhttp = false;
-	var WCS = ["G54", "G55", "G56", "G57", "G58", "G59", "G28", "G30", "G92"];
-	var WCSVAL = ["wcsx", "wcsy", "wcsz"];
+	<script type="text/javascript">
+		/* set up all functions */
+		var rpmmax = 12000;
+		var xmlhttp = false;
+		var WCS = ["G54", "G55", "G56", "G57", "G58", "G59", "G28", "G30", "G92"];
+		var WCSVAL = ["wcsx", "wcsy", "wcsz"];
+		var S_NOT_READY = 'not_ready',
+			S_READY = 'ready',
+			S_BUSY = 'busy',
+			S_INIT = 'busy_init',
+			S_BUSY_CONNECTING = 'busy_connecting',
+			S_BUSY_DISCONNECTING = 'busy_disconnecting',
+			S_BUSY_RUN = 4,
+			S_BUSY_FILERUN = 5,
+			S_HOLD = 'hold';
+		var status = S_INIT;
+		var status_previous_ui = S_BUSY;
+		var enable_status = { nav_bar: null, motion: null, motion_file: null };
+		var file_loaded = false;
+		var timer_status = -1;
 
-	function findWcs(x)
-	{
-		for (i=0; i<WCS.length; i++)
-		if (WCS[i]==x) return i;
-		return -1;
-	} // findWcs
+		function updateUiStatus() {
+			if (status == status_previous_ui) {
+				return;
+			}
 
-	function getState()
-	{
-		$.ajax({
-			url: '/state',
-			dataType: 'json',
-			success: function(result,status,xhr) {
-				$('#state').html(result.state);
-				$('#state').bgColor = result.color;
-				$('#msg').html(result.msg);
-				$('#x').html(result.wx);
-				$('#y').html(result.wy);
-				$('#z').html(result.wz);
-				//parse $G response
-				for (k=0; k<result.G.length; k++) {
-					if (WCS.indexOf(result.G[k]) > -1)
-						$('#wcs').val(result.G[k]);
-					else if (result.G[k] == "M8")
-						$('#coolant').val("On");
-					else if (result.G[k] == "M3")
-						$('#spindle').val("100%");
+			// Show/hide the serial-port connection panel
+			if (isBusy(status_previous_ui) || status_previous_ui == S_INIT) {
+				if (status == S_NOT_READY) {
+					$(".disconnected-panel").removeAttr('hidden');
+					$(".connected-panel").attr('hidden', 'hidden');
+				} else {
+					$(".connected-panel").removeAttr('hidden');
+					$(".disconnected-panel").attr('hidden', 'hidden');
 				}
 			}
-		});
-	} // getState
 
-	/* parse once configuration */
-	function getConfig()
-	{
-		$.ajax({
-			url: '/config',
-			dataType: 'json',
-			success: function(result,status,xhr) {
-				rpmmax = result.rpmmax;
+			if (enable_status.nav_bar) {
+				$(".nav-panel button").removeAttr('disabled');
+				$(".nav-panel select").removeAttr('disabled');
+			} else {
+				$(".nav-panel button").attr('disabled', 'disabled');
+				$(".nav-panel select").attr('disabled', 'disabled');
 			}
-		});
-	} // getConfig
 
-	function vibrate(t)
-	{ //safari has issues with 'notification'
-		// if ("vibrate" in navigator) {
-		//  navigator.vibrate(t);
-		// } else if ("vibrate" in notification) {
-		//  navigator.notification.vibrate(t);
-		// }
-	} // vibrate
+			if (enable_status.motion) {
+				$(".motion-ctrl button").removeAttr('disabled');
+				$(".motion-ctrl select").removeAttr('disabled');
+			} else {
+				$(".motion-ctrl button").attr('disabled', 'disabled');
+				$(".motion-ctrl select").attr('disabled', 'disabled');
+			}
 
-	function sendCmd(command)
-	{
-		$.ajax({
-			url: '/send',
-			data: { cmd: command }
-		});
-		vibrate(500);
-	}
+			if (enable_status.motion_file) {
+				$(".motion-file-ctrl button").removeAttr('disabled');
+			} else {
+				$(".motion-file-ctrl button").attr('disabled', 'disabled');
+			}
 
-	/*is this necessary when sendCmd would do the same thing?*/
-	function sendGcode(command)
-	{
-		$.ajax({
-			url: '/send',
-			data: { gcode: command }
-		});
+			updateUiFileLoaded();
 
-		vibrate(50);
-	} // sendCmd
-
-	function setWcs()
-	{
-		wcs = $('#wcs').val();
-		p = findWcs(wcs);
-
-		if (p<6)
-			cmd = "G10L20P"+(p+1);
-		else
-		if (p==6)
-			cmd = "G28.1";
-		else
-		if (p==7)
-			cmd = "G30.1";
-		else
-		if (p==8)
-			cmd = "G92";
-
-		for (i=0; i<WCSVAL.length; i++) {
-			x = $("#"+WCSVAL[i]).val();
-			if (x != "") {
-				cmd += "XYZ"[i] + x;
-				$("#"+WCSVAL[i]).val("");
-				}
+			status_previous_ui = status;
 		}
-		sendGcode(cmd+"\n$#\n$G");
-	} // setWcs
 
-	function wcsChange()
-	{
-		sendGcode($('#wcs option:selected').text() + "\n$G");
-	} // wcsChange
+		function updateUiFileLoaded() {
+			if (file_loaded) {
+				$(".motion-file-ctrl button[name='start']").removeAttr('disabled');
+				$(".motion-file-ctrl button[name='pause']").removeAttr('disabled');
+				$(".motion-file-ctrl button[name='stop']").removeAttr('disabled');
+			} else {
+				$(".motion-file-ctrl button[name='start']").attr('disabled', 'disabled');
+				$(".motion-file-ctrl button[name='pause']").attr('disabled', 'disabled');
+				$(".motion-file-ctrl button[name='stop']").attr('disabled', 'disabled');
+			}
+		}
 
-	function spindleChange()
-	{
-		rpm = $('#spindle option:selected').text();
-		if (rpm=="Off")
-			sendGcode("M5");
-		else {
+		function setStatus(st) {
+			status = st;
+			//console.log(status);
+
+			enable_status.nav_bar = false;
+			enable_status.motion = false;
+			enable_status.motion_file = false;
+
+			switch (status) {
+				case S_NOT_READY:
+					enable_status.nav_bar = true;
+					enable_status.motion = false;
+					enable_status.motion_file = false;
+
+					// Slower status after after disconnected
+					clearInterval(timer_status);
+					timer_status = setInterval(getState, 1000);
+					break;
+				case S_READY:
+					enable_status.nav_bar = true;
+					enable_status.motion = true;
+					enable_status.motion_file = true;
+
+					sendCmd('STOP');
+
+					// Faster status after after successful connection
+					clearInterval(timer_status);
+					timer_status = setInterval(getState, 250);
+					break;
+				case S_BUSY:
+					enable_status.nav_bar = false;
+					enable_status.motion = false;
+					enable_status.motion_file = false;
+					break;
+				case S_INIT:
+					enable_status.nav_bar = true;
+					enable_status.motion = false;
+					enable_status.motion_file = false;
+					break;
+				case S_BUSY_CONNECTING:
+					enable_status.nav_bar = false;
+					enable_status.motion = false;
+					enable_status.motion_file = false;
+					break;
+				case S_BUSY_DISCONNECTING:
+					enable_status.nav_bar = false;
+					enable_status.motion = false;
+					enable_status.motion_file = false;
+					break;
+				case S_BUSY_RUN:
+					enable_status.nav_bar = true;
+					enable_status.motion = true;
+					enable_status.motion_file = false;
+					break;
+				case S_BUSY_FILERUN:
+					enable_status.nav_bar = true;
+					enable_status.motion = false;
+					enable_status.motion_file = false;
+					break;
+				case S_HOLD:
+					enable_status.nav_bar = true;
+					enable_status.motion = true;
+					enable_status.motion_file = true;
+					break;
+			}
+
+			updateUiStatus();
+		}
+
+		function isBusyRunning(st) {
+			var _st = (st) ? st : status;
+			return _st == S_BUSY || _st == S_BUSY_CONNECTING || _st == S_BUSY_DISCONNECTING || _st == S_BUSY_RUN;
+		}
+
+		function isBusyFileRunning(st) {
+			var _st = (st) ? st : status;
+			return _st == S_BUSY || _st == S_BUSY_CONNECTING || _st == S_BUSY_DISCONNECTING || _st == S_BUSY_FILERUN;
+		}
+
+		function isReady(st) {
+			var _st = (st) ? st : status;
+			return !(_st == S_NOT_READY || _st == S_INIT);
+		}
+
+		function isBusy(st) {
+			var _st = (st) ? st : status;
+			return _st == S_BUSY || _st == S_BUSY_CONNECTING || _st == S_BUSY_DISCONNECTING || _st == S_BUSY_FILERUN || _st == S_BUSY_RUN;
+		}
+
+		function findWcs(x) {
+			for (i = 0; i < WCS.length; i++)
+				if (WCS[i] == x) return i;
+			return -1;
+		} // findWcs
+
+		function getState() {
+			$.ajax({
+				url: '/state',
+				dataType: 'json',
+				success: function (result, response_status, xhr) {
+					$('#state').html(result.state);
+					$('#state').bgColor = result.color;
+					$('#msg').html(result.msg);
+					$('#mpos-x').html(result.mx);
+					$('#mpos-y').html(result.my);
+					$('#mpos-z').html(result.mz);
+					$('#wpos-x').html(result.wx);
+					$('#wpos-y').html(result.wy);
+					$('#wpos-z').html(result.wz);
+					//parse $G response
+					for (k = 0; k < result.G.length; k++) {
+						if (WCS.indexOf(result.G[k]) > -1)
+							$('#wcs').val(result.G[k]);
+						else if (result.G[k] == "M8")
+							$('#coolant').val("On");
+						else if (result.G[k] == "M3")
+							$('#spindle').val("100%");
+					}
+
+					//request for comports list
+					if ($('[data-name="select-comport"]').html().trim() == '') {
+						getComPorts();
+					}
+
+					if (status == S_INIT) {
+						setStatus(result.state == 'Not connected' ? S_NOT_READY : S_READY);
+					}
+					else if (status == S_BUSY_CONNECTING && result.state != 'Not connected') {
+						setStatus(S_READY);
+					} else if (status == S_BUSY_DISCONNECTING && result.state == 'Not connected') {
+						setStatus(S_NOT_READY);
+					}
+
+					updateUiStatus();
+				}
+			});
+		} // getState
+
+		/* parse once configuration */
+		function getConfig() {
+			$.ajax({
+				url: '/config',
+				dataType: 'json',
+				success: function (result, status, xhr) {
+					rpmmax = result.rpmmax;
+				}
+			});
+		} // getConfig
+
+		function getComPorts() {
+			$.ajax({
+				url: '/ports',
+				dataType: 'json',
+				success: function (result, status, xhr) {
+					//parse comports
+					$('[data-name="select-comport"]').html('');
+					for (k = 0; k < result.comports.length; k++) {
+						$('[data-name="select-comport"]').append($("<option>", { value: result.comports[k], text: result.comports[k] }));
+					}
+				}
+			});
+		} // getComPorts
+
+		function vibrate(t) { //safari has issues with 'notification'
+			// if ("vibrate" in navigator) {
+			//  navigator.vibrate(t);
+			// } else if ("vibrate" in notification) {
+			//  navigator.notification.vibrate(t);
+			// }
+		} // vibrate
+
+		function sendCmd(command) {
+			$.ajax({
+				url: '/send',
+				data: { cmd: command }
+			});
+			vibrate(500);
+		}
+
+		/*is this necessary when sendCmd would do the same thing?*/
+		function sendGcode(command) {
+			$.ajax({
+				url: '/send',
+				data: { gcode: command }
+			});
+
+			vibrate(50);
+		} // sendCmd
+
+		function setWcs() {
+			wcs = $('#wcs').val();
+			p = findWcs(wcs);
+
+			if (p < 6)
+				cmd = "G10L20P" + (p + 1);
+			else
+				if (p == 6)
+					cmd = "G28.1";
+				else
+					if (p == 7)
+						cmd = "G30.1";
+					else
+						if (p == 8)
+							cmd = "G92";
+
+			for (i = 0; i < WCSVAL.length; i++) {
+				x = $("#" + WCSVAL[i]).val();
+				if (x != "") {
+					cmd += "XYZ"[i] + x;
+					$("#" + WCSVAL[i]).val("");
+				}
+			}
+			sendGcode(cmd + "\n$#\n$G");
+		} // setWcs
+
+		function wcsChange() {
+			sendGcode($('#wcs option:selected').text() + "\n$G");
+		} // wcsChange
+
+		function spindleChange() {
+			rpm = $('#spindle option:selected').text();
+			if (rpm == "Off")
+				sendGcode("M5");
+			else {
+				getConfig();
+				rpm = (parseInt(rpm) * rpmmax) / 100;
+				sendGcode("M3 S" + rpm);
+			}
+		} // spindleChange
+
+		function coolantChange() {
+			coolant = $('#coolant option:selected').text();
+			if (coolant == "Off")
+				sendGcode("M9");
+			else
+				if (coolant == "On")
+					sendGcode("M8");
+		} // spindleChange
+
+		function sendMove(command) {
+			gcode = "G91G0";
+			step = $('#step option:selected').text();
+			switch (command) {
+				case 'O':
+					gcode = "G90G0X0Y0Z0";
+					break;
+				case 'XO':
+					gcode = "G90G0X0";
+					break;
+				case 'YO':
+					gcode = "G90G0Y0";
+					break;
+				case 'ZO':
+					gcode = "G90G0Z0";
+					break;
+				case 'XdYu':
+					gcode += "X-" + step + "Y" + step;
+					break;
+				case 'Yu':
+					gcode += "Y" + step;
+					break;
+				case 'XuYu':
+					gcode += "X" + step + "Y" + step;
+					break;
+				case 'Xu':
+					gcode += "X" + step;
+					break;
+				case 'Xd':
+					gcode += "X-" + step;
+					break;
+				case 'XdYd':
+					gcode += "X-" + step + "Y-" + step;
+					break;
+				case 'Yd':
+					gcode += "Y-" + step;
+					break;
+				case 'XuYd':
+					gcode += "X" + step + "Y-" + step;
+					break;
+				case 'Zu':
+					gcode += "Z" + step;
+					break;
+				case 'Zd':
+					gcode += "Z-" + step;
+					break;
+				default:
+					//handle for errors here.
+					break;
+			}
+			sendGcode(gcode);
+			sendGcode("G90");
+		} // sendMove
+
+		function openFileDialog() {
+			$('#upload-file')[0].reset();
+			$('[name="file"]').click();
+		}
+
+		function fileChange() {
+			var formData = new FormData($('#upload-file')[0]);
+			$.ajax({
+				url: '/upload',  //Server script to process data
+				data: formData,
+				type: 'POST',
+				cache: false,
+				contentType: false,
+				processData: false,
+				success: function (result, status, xhr) {
+					file_loaded = true;
+					updateUiFileLoaded();
+				}
+			});
+		}
+
+		function clearFile() {
+			file_loaded = false;
+			updateUiFileLoaded();
+			sendCmd('CLEAR_GCODE')
+		}
+
+		function connect() {
+			sendCmd('OPEN,' + $('[data-name="select-comport"]')[0].value + ',' + $('[data-name="select-baudrate"]')[0].value);
+			setStatus(S_BUSY_CONNECTING);
+		}
+
+		function disconnect() {
+			sendCmd('OPEN');
+			setStatus(S_BUSY_DISCONNECTING);
+		}
+
+
+		/* PERFORM THESE ACTIONS ONCE THE PAGE HAS LOADED */
+		$(document).ready(function () {
+			//set up fast click to handle mobile browser delay
+			FastClick.attach(document.body);
+
+			sendGcode("$#\n$G\n");
 			getConfig();
-			rpm = (parseInt(rpm) * rpmmax)/100;
-			sendGcode("M3 S"+rpm);
-		}
-	} // spindleChange
-
-	function coolantChange()
-	{
-		coolant = $('#coolant option:selected').text();
-		if (coolant=="Off")
-			sendGcode("M9");
-		else
-		if (coolant == "On")
-			sendGcode("M8");
-	} // spindleChange
-
-	function sendMove(command)
-	{
-		gcode = "G91G0";
-		step = $('#step option:selected').text();
-		switch (command) {
-			case 'O':
-				gcode = "G90G0X0Y0Z0";
-				break;
-			case 'XO':
-				gcode = "G90G0X0";
-				break;
-			case 'YO':
-				gcode = "G90G0Y0";
-				break;
-			case 'ZO':
-				gcode = "G90G0Z0";
-				break;
-			case 'XdYu':
-				gcode += "X-" + step + "Y" + step;
-				break;
-			case 'Yu':
-				gcode += "Y" + step;
-				break;
-			case 'XuYu':
-				gcode += "X" + step + "Y" + step;
-				break;
-			case 'Xu':
-				gcode += "X" + step;
-				break;
-			case 'Xd':
-				gcode += "X-" + step;
-				break;
-			case 'XdYd':
-				gcode += "X-" + step + "Y-" + step;
-				break;
-			case 'Yd':
-				gcode += "Y-" + step;
-				break;
-			case 'XuYd':
-				gcode += "X" + step + "Y-" + step;
-				break;
-			case 'Zu':
-				gcode += "Z" + step;
-				break;
-			case 'Zd':
-				gcode += "Z-" + step;
-				break;
-			default:
-				//handle for errors here.
-				break;
-		}
-		sendGcode(gcode);
-		sendGcode("G90");
-	} // sendMove
-
-	function fileChange()
-	{
-		var formData = new FormData($('#upload-file')[0]);
-		$.ajax({
-			url: '/upload',  //Server script to process data
-			data: formData,
-			type: 'POST',
-			cache: false,
-			contentType: false,
-			processData: false
+			timer_status = setInterval(getState, 1000);
+			/* ASSIGN FUNCTIONS TO UI ELEMENTS */
 		});
-	}
+	</script>
 
-
-	/* PERFORM THESE ACTIONS ONCE THE PAGE HAS LOADED */
-	$(document).ready(function ()
-	{
-		//set up fast click to handle mobile browser delay
-		FastClick.attach(document.body);
-
-		sendGcode("$#\n$G\n");
-		getConfig();
-		setInterval(getState, 1000);
-		/* ASSIGN FUNCTIONS TO UI ELEMENTS */
-	});
-</script>
-
-<style type="text/css">
-	.command {
-		width:100%;
-		height:32px;
-	}
-	.fullwide {
-		width:100%;
-	}
-	.large {
-		text-align: center;
-		font-size: 22px;
-		color: DarkBlue;
-	}
-	.medium {
-		text-align: center;
-		font-size: 18px;
-		color: DarkGreen;
-	}
-	.border > div {
-		-webkit-box-sizing: border-box;
-		-moz-box-sizing: border-box;
-		box-sizing: border-box;
-		border:1px solid #999;
-	}
-	.hdr {
-		font-weight:bold;
-		font-size: 1.1em;
-		height:30px;
-	}
-	.direction {
-		width: 100%;
-		height: 64px;
-	}
-	.bold {
-	    font-weight:bold;
-	}
-	input[type="number"] {
-		width: 15%;
-		box-sizing: border-box;
-		-webkit-box-sizing:border-box;
-		-moz-box-sizing: border-box;
-	}
-</style>
+	<style type="text/css">
+		.command {
+			width: 100%;
+			height: 32px;
+		}
+		
+		.fullwide {
+			width: 100%;
+		}
+		
+		.large {
+			text-align: center;
+			font-size: 22px;
+			color: DarkBlue;
+		}
+		
+		.medium {
+			text-align: center;
+			font-size: 18px;
+			color: DarkGreen;
+		}
+		
+		.border > div {
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+			border: 1px solid #999;
+		}
+		
+		.hdr {
+			font-weight: bold;
+			font-size: 1.1em;
+			height: 30px;
+		}
+		
+		.direction {
+			width: 100%;
+			height: 64px;
+		}
+		
+		.bold {
+			font-weight: bold;
+		}
+		
+		input[type="number"] {
+			width: 15%;
+			box-sizing: border-box;
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+		}
+	</style>
 </head>
 
 <body>
-	<h1><center>bCNC Pendant</center></h1>
-
-	<!-- CONTROL BUTTONS & STATUS INFO -->
-	<div class="pure-g">
-		<div class="pure-u-1-3"><button id="btn-home" onclick="sendCmd('HOME');" class="button command">Home</button></div>
-		<div class="pure-u-1-3"><button id="btn-unlock" onclick="sendCmd('UNLOCK');" class="button command">Unlock</button></div>
-		<div class="pure-u-1-3"><button id="btn-reset" onclick="sendCmd('RESET');" class="button command">Reset</button></div>
-	</div>
-	<br />
-	<div class="pure-g border">
-		<div class="pure-u-1 large border" id="state" style="border-bottom:0px;"><span>Status</span>&nbsp;</div>
-	</div>
-	<div class="pure-g border">
-		<div class="pure-u-1 medium border" id="msg" style="border-bottom:0px;"><span>Message</span>&nbsp;</div>
-	</div>
-
-	<div class="pure-g border">
-		<div class="pure-u-1-3 large">X: <span id='x'>&nbsp;</span></div>
-		<div class="pure-u-1-3 large">Y: <span id='y'>&nbsp;</span></div>
-		<div class="pure-u-1-3 large">Z: <span id='z'>&nbsp;</span></div>
-	</div>
-	<br />
-	<div class="pure-g">
-		<div class="pure-u-1-3"><button id="btn-run" onclick="sendCmd('RUN');" class="button command">Run</button></div>
-		<div class="pure-u-1-3"><button id="btn-pause" onclick="sendCmd('PAUSE');" class="button command">Pause</button></div>
-		<div class="pure-u-1-3"><button id="btn-stop" onclick="sendCmd('STOP');" class="button command">Stop</button></div>
-	</div>
-
-	<br />
-	<!-- MACHINE CONTROL SECTION -->
-	<div class="pure-g"><div class="pure-u-1 hdr">Machine Control</div></div>
-
-	<div class="pure-g">
-		<div class="pure-u-1-4">
-		Spindle:
-			<select id="spindle" onchange="spindleChange();">
-				<option value="Off" selected>Off</option>
-				<option value="25%">25%</option>
-				<option value="50%">50%</option>
-				<option value="75%">75%</option>
-				<option value="100%">100%</option>
-			</select>
+	<div class="container">
+		<div data-route="axes">
+			<div class="title text-xs-center">
+				<h1>bCNC Controller</h1>
+			</div>
+			<div class="nav-panel">
+				<div class="container-fluid connected-panel">
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+							<div class="dropdown">
+								<button type="button" class="btn btn-default" id="dropdownMenuLink" class="dropdown-toggle" data-toggle="dropdown">
+									<i class="fa fa-list"></i>
+								</button>
+								<div class="dropdown-menu" role="menu">
+									<a class="dropdown-item" href="#" onclick="sendCmd('HOME');">
+										<i class="fa fa-home"></i>&nbsp;Homing
+									</a>
+									<a class="dropdown-item" href="#" onclick="sendCmd('UNLOCK');">
+										<i class="fa fa-unlock-alt"></i>&nbsp;Unlock
+									</a>
+									<a class="dropdown-item" href="#" onclick="sendCmd('RESET');">
+										<i class="fa fa-undo"></i>&nbsp;Reset
+									</a>
+									<div class="dropdown-divider"></div>
+									<a class="dropdown-item bg-danger" href="#" onclick="disconnect();">
+										<i class="fa fa-ban"></i>&nbsp;Disconnect
+									</a>
+								</div>
+							</div>
+						</div>
+						<div class="col-xs-10">
+							<div class="active-state text-xs-center form-control" data-name="active-state" id="state">&nbsp;</div>
+						</div>
+					</div>
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+						</div>
+						<div class="col-xs-4">
+							<button type="button" class="btn btn-default" onclick="sendCmd('PAUSE');">
+								<i class="fa fa-play"></i><i class="fa fa-pause"></i>
+							</button>
+						</div>
+						<div class="col-xs-4">
+							<button type="button" class="btn btn-default" onclick="sendCmd('STOP');">
+								<i class="fa fa-stop"></i>
+							</button>
+						</div>
+						<div class="col-xs-2">
+						</div>
+					</div>
+				</div>
+				<div class="container-fluid disconnected-panel" hidden>
+					<div class="row no-gutter">
+						<div class="col-xs-10">
+							<select title="Serial Port" id="comports" class="form-control" data-name="select-comport">
+							</select>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-default" onclick="getComPorts(	);">
+								<i class="fa fa-refresh"></i>
+							</button>
+						</div>
+					</div>
+					<div class="row no-gutter">
+						<div class="col-xs-6">
+							<select title="Baud Rate" id="baudrate" class="form-control" data-name="select-baudrate">
+								<option>2400</option>
+								<option>4800</option>
+								<option>9600</option>
+								<option>19200</option>
+								<option>38400</option>
+								<option>57600</option>
+								<option selected>115200</option>
+							</select>
+						</div>
+						<div class="col-xs-6">
+							<button type="button" class="btn btn-success" onclick="connect();">
+								<i class="fa fa-plug" style="padding-right: 0.5rem"></i>Connect
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="axis-position">
+				<div class="container-fluid">
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+						</div>
+						<div class="col-xs-10">
+							<div class="col-xs-4">
+								<div class="axis-label">X</div>
+							</div>
+							<div class="col-xs-4">
+								<div class="axis-label">Y</div>
+							</div>
+							<div class="col-xs-4">
+								<div class="axis-label">Z</div>
+							</div>
+						</div>
+					</div>
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+							MPos:
+						</div>
+						<div class="col-xs-10">
+							<div class="col-xs-4">
+								<div class="axis-position" id="mpos-x">0.000</div>
+							</div>
+							<div class="col-xs-4">
+								<div class="axis-position" id="mpos-y">0.000</div>
+							</div>
+							<div class="col-xs-4">
+								<div class="axis-position" id="mpos-z">0.000</div>
+							</div>
+						</div>
+					</div>
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+							WPos:
+						</div>
+						<div class="col-xs-10">
+							<div class="col-xs-4">
+								<div class="axis-position" id="wpos-x">0.000</div>
+							</div>
+							<div class="col-xs-4">
+								<div class="axis-position" id="wpos-y">0.000</div>
+							</div>
+							<div class="col-xs-4">
+								<div class="axis-position" id="wpos-z">0.000</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="motion-ctrl">
+				<div class="container-fluid">
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-secondary jog-x-minus jog-y-plus" title="Move X- Y+" onclick="sendMove('XdYu')">
+								<i class="fa fa-arrow-circle-up rotate-45"></i>
+                    		</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-primary jog-y-plus" title="Move Y+" onclick="sendMove('Yu')">Y+</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-secondary jog-x-plus jog-y-plus" title="Move X+ Y+" onclick="sendMove('XuYu')">
+                        		<i class="fa fa-arrow-circle-right rotate-45"></i>
+                    		</button>
+						</div>
+						<div class="col-xs-4">
+							<select id="step" class="form-control" data-name="select-distance">
+								<option>0.001</option>
+								<option>0.005</option>
+								<option>0.01</option>
+								<option>0.05</option>
+								<option>0.1</option>
+								<option>0.5</option>
+								<option selected>1</option>
+								<option>5</option>
+								<option>10</option>
+								<option>50</option>
+								<option>100</option>
+								<option>500</option>
+							</select>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-primary jog-z-plus" title="Move Z+" onclick="sendMove('Zu')">Z+</button>
+						</div>
+					</div>
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-primary jog-x-minus" title="Move X-" onclick="sendMove('Xd')">X-</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-info jog-xy-zero" title="Move To Zero (G0 X0 Y0 Z0)" onclick="sendMove('XOYOZO')">
+								<i class="fa fa-circle-o"></i>
+							</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-primary jog-x-plus" title="Move X+" onclick="sendMove('Xu')">X+</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-info jog-x-zero" title="Move To X Zero (G0 X0)" onclick="sendMove('XO')">X0</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-info jog-y-zero" title="Move To Y Zero (G0 Y0)" onclick="sendMove('YO')">Y0</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-info jog-z-zero" title="Move To Z Zero (G0 Z0)" onclick="sendMove('ZO')">Z0</button>
+						</div>
+					</div>
+					<div class="row no-gutter">
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-secondary jog-x-minus jog-y-minus" title="Move X- Y-" onclick="sendMove('XdYd')">
+								<i class="fa fa-arrow-circle-left rotate-45"></i>
+							</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-primary jog-y-minus" title="Move Y-" onclick="sendMove('Yd')">Y-</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-secondary jog-x-plus jog-y-minus" title="Move X+ Y-" onclick="sendMove('XuYd')">
+								<i class="fa fa-arrow-circle-down rotate-45"></i>
+							</button>
+						</div>
+						<div class="col-xs-4">
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-primary jog-z-minus" title="Move Z-" onclick="sendMove('Zd')">Z-</button>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="motion-file-ctrl">
+				<div class="container-fluid">
+					<form id="upload-file" style="width:75%;display:none;" enctype="multipart/form-data">
+						<input name="file" type="file" onchange="fileChange();" />
+					</form>
+					<div class="row no-gutter">
+						<div class="col-xs-8">
+							<button type="button" class="btn btn-warning jog-x-minus jog-y-minus" title="Upload File" onclick="openFileDialog();">
+								<i class="fa fa-arrow-up" style="padding-right: 5px;"></i><span>Upload File</span>
+							</button>
+						</div>
+						<div class="col-xs-2">
+							<button name="unload" type="button" class="btn btn-default" title="Close" onclick="clearFile();" disabled=""><i class="fa fa-close"></i></button>
+						</div>
+						<div class="col-xs-2">
+							<button name="start" type="button" class="btn btn-warning" title="Run" onclick="sendCmd('START');" disabled=""><i class="fa fa-play"></i></button>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
-	<div class="pure-u-1-4">
-		Coolant:
-			<select id="coolant" onchange="coolantChange();">
-				<option value="Off" selected>Off</option>
-				<option value="On">On</option>
-			</select>
-		</div>
 	</div>
 
-	<br />
-
-	<div class="pure-g">
+	<!--<div class="pure-g">
 		<div class="pure-u-1-2">
 			<span style="padding-top:2px;">Command:</span>
-			<input id="cmd" style="width:75%"/>
+			<input id="cmd" style="width:75%" />
 			<button onclick="sendCmd(encodeURIComponent($('#cmd').val())); $('#cmd').val('');" class="button">
 				Send
 			</button>
 		</div>
 		<div class="pure-u-1-2">
 			<form id="upload-file" style="width:75%" enctype="multipart/form-data">
-			Select file to upload:
-			<input name="file" type="file" onchange="fileChange();"/>
-		</form>
+				Select file to upload:
+				<input name="file" type="file" onchange="fileChange();" />
+			</form>
 		</div>
-	</div>
+	</div>-->
 
-	<br />
-		<!-- WORK COORDINATE SYSTEM SECTION -->
-		<div class="pure-g"><div class="pure-u-1 hdr">Work Coordinates</div></div>
-			<div class="pure-g">
-			<div class="pure-u-1">
-			<select id="wcs" onchange="wcsChange();">
-				<option value="G54" selected>G54</option>
-				<option value="G55">G55</option>
-				<option value="G56">G56</option>
-				<option value="G57">G57</option>
-				<option value="G58">G58</option>
-				<option value="G59">G59</option>
-				<option value="G28">G28</option>
-				<option value="G30">G30</option>
-				<option value="G92">G92</option>
-			</select>
-
-			<span style="padding-left: 10px; padding-top:2px;">X: </span><input id="wcsx" type="number" size="1"/>
-			<span style="padding-left: 10px; padding-top:2px;">Y: </span><input id="wcsy" type="number" size="1"/>
-			<span style="padding-left: 10px; padding-top:2px;">Z: </span><input id="wcsz" type="number" size="1"/>
-			<button onclick="setWcs();" class="button">Set</button>
-			</div>
-			</div>
-		</div>
-	</div>
-
-	<br />
-	<!-- JOGGING SECTION -->
-	<div class="pure-g"><div class="pure-u-1 hdr">Jogging</div></div>
-
-		<div class="pure-g">
-		<div class="pure-u-1-6 bold" style="text-align:center;"><button onclick="sendMove('ZO')" class="button direction">Z 0</button></div>
-		<div class="pure-u-1-3">&nbsp;</div>
-		<div class="pure-u-1-6 bold" style="text-align:center;"><button onclick="sendMove('YO')" class="button direction">Y 0</button></div>
-	</div>
-
-	<div class="pure-g">
-		<div class="pure-u-1-6"><button onclick="sendMove('Zu')" class="button direction">&#x25B2;</button></div>
-		<div class="pure-u-1-6">&nbsp;</div>
-		<div class="pure-u-1-6"><button onclick="sendMove('XdYu')" class="button direction">&#x25F8;</button></div>
-		<div class="pure-u-1-6"><button onclick="sendMove('Yu')"   class="button direction">&#x25B2;</button></div>
-		<div class="pure-u-1-6"><button onclick="sendMove('XuYu')" class="button direction">&#x25F9;</button></div>
-	</div>
-
-	<div class="pure-g">
-		<div class="pure-u-1-6" align="center">
-			<select id="step" width="100%" style="margin-top:21px;">
-				<option value="0.001">0.001</option>
-				<option value="0.005">0.005</option>
-				<option value="0.01">0.01</option>
-				<option value="0.02">0.02</option>
-				<option value="0.05">0.05</option>
-				<option value="0.1">0.1</option>
-				<option value="0.2">0.2</option>
-				<option value="0.5">0.5</option>
-				<option value="1" selected>1</option>
-				<option value="2">2</option>
-				<option value="5">5</option>
-				<option value="10">10</option>
-				<option value="20">20</option>
-				<option value="50">50</option>
-				<option value="100">100</option>
-				<option value="500">500</option>
-			</select>
-		</div>
-
-		<div class="pure-u-1-6 bold" style="text-align:center;"><button onclick="sendMove('XO')" class="button direction">X 0</button></div>
-			<div class="pure-u-1-6"><button onclick="sendMove('Xd')" class="button direction">&#x25C0;</button></div>
-			<div class="pure-u-1-6" align="center"><button onclick="sendMove('O')" class="button direction">&#x25EF;</button></div>
-			<div class="pure-u-1-6"><button onclick="sendMove('Xu')" class="button direction">&#x25b6;</button></div>
-		</div>
-		<div class="pure-g">
-			<div class="pure-u-1-6"><button onclick="sendMove('Zd')"   class="button direction">&#x25BC;</button></div>
-			<div class="pure-u-1-6">&nbsp;</div>
-			<div class="pure-u-1-6"><button onclick="sendMove('XdYd')" class="button direction">&#x25FA;</button></div>
-			<div class="pure-u-1-6"><button onclick="sendMove('Yd')"   class="button direction">&#x25BC;</button></div>
-			<div class="pure-u-1-6"><button onclick="sendMove('XuYd')" class="button direction">&#x25FF;</button></div>
-		</div>
-	</div>
 </body>
+
 </html>

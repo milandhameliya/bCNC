@@ -15,7 +15,14 @@ import json
 import urllib
 import threading
 
+from bCNC import Application as myApp
 from CNC import CNC
+import Utils
+
+try:
+	from serial.tools.list_ports import comports
+except:
+	from Utils import comports
 
 try:
 	import urlparse
@@ -84,7 +91,7 @@ class Pendant(HTTPServer.BaseHTTPRequestHandler):
 		elif page == "/state":
 			self.do_HEAD(200, content="text/text")
 			tmp = {}
-			for name in ["state", "color", "msg", "wx", "wy", "wz", "G"]:
+			for name in ["state", "color", "msg", "wx", "wy", "wz", "mx", "my", "mz", "G"]:
 				tmp[name] = CNC.vars[name]
 			self.wfile.write(json.dumps(tmp))
 
@@ -93,6 +100,13 @@ class Pendant(HTTPServer.BaseHTTPRequestHandler):
 			snd = {}
 			snd["rpmmax"] = httpd.app.get("CNC","spindlemax")
 			self.wfile.write(json.dumps(snd))
+
+		elif page == "/ports":
+			self.do_HEAD(200, content="text/text")
+			tmp = {}
+			devices = sorted([x[0] for x in comports()])
+			tmp["comports"] = devices
+			self.wfile.write(json.dumps(tmp))
 
 		elif page == "/icon":
 			if arg is None: return
@@ -189,11 +203,12 @@ class Pendant(HTTPServer.BaseHTTPRequestHandler):
 		elif filetype == "gif": self.do_HEAD(content="image/gif")
 		elif filetype == "png": self.do_HEAD(content="image/png")
 		elif filetype == "ico": self.do_HEAD(content="image/x-icon")
+		elif filetype.startswith("woff2"): self.do_HEAD(content="text/plain")
 		else: self.do_HEAD()
 
 		if page == "": page = "index.html"
 		try:
-			f = open(os.path.join(webpath,page),"r")
+			f = open(os.path.join(webpath,page),"rb")
 			self.wfile.write(f.read())
 			f.close()
 		except IOError:

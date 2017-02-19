@@ -1,0 +1,39 @@
+.container {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.row [class*="col-"] {
+    padding: 2px;
+}
+.rotate-45 {
+    /* Safari */
+    -webkit-transform: rotate(-45deg);
+
+    /* Firefox */
+    -moz-transform: rotate(-45deg);
+
+    /* IE */
+    -ms-transform: rotate(-45deg);
+
+    /* Opera */
+    -o-transform: rotate(-45deg);
+}
+button{
+    width: 100%;
+}
+.axis-position {
+    text-align: center;
+}
+.axis-label {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+button:disabled {
+    background-color: buttonface;
+}
+button:disabled:hover {
+    background-color: buttonface !important;
+}
+.nav-panel .dropdown-menu i {
+    width: 15px;
+}

@@ -1863,8 +1863,13 @@ class Application(Toplevel,Sender):
 	# Create a new file
 	#-----------------------------------------------------------------------
 	def newFile(self, event=None):
+		self.performNewFile()
+
+	def performNewFile(self, force=False):
 		if self.running: return
-		if self.fileModified(): return
+		if not force:
+			if self.fileModified():
+				return
 		self.gcode.init()
 		self.gcode.headerFooter()
 		self.editor.fill()
@@ -2052,6 +2057,14 @@ class Application(Toplevel,Sender):
 							background="Salmon",
 							activebackground="Salmon")
 				self.enable()
+
+	#-----------------------------------------------------------------------
+	def openClose2(self, device, baudrate):
+		if self.serial is None:
+			serialPage = Page.frames["Serial"]
+			serialPage.portCombo.set(device)
+			serialPage.baudCombo.set(baudrate)
+		self.openClose()
 
 	#-----------------------------------------------------------------------
 	def open(self, device, baudrate):
