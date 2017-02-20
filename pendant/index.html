@@ -25,8 +25,8 @@
 			S_INIT = 'busy_init',
 			S_BUSY_CONNECTING = 'busy_connecting',
 			S_BUSY_DISCONNECTING = 'busy_disconnecting',
-			S_BUSY_RUN = 4,
-			S_BUSY_FILERUN = 5,
+			S_BUSY_RUN = 'busy_run',
+			S_BUSY_FILERUN = 'busy_filerun',
 			S_HOLD = 'hold';
 		var status = -1;
 		var status_previous_ui = S_BUSY;
@@ -66,12 +66,6 @@
 				$(".motion-ctrl select").attr('disabled', 'disabled');
 			}
 
-			if (enable_status.motion_file) {
-				$(".motion-file-ctrl button").removeAttr('disabled');
-			} else {
-				$(".motion-file-ctrl button").attr('disabled', 'disabled');
-			}
-
 			updateUiFileLoaded();
 
 			status_previous_ui = status;
@@ -79,13 +73,16 @@
 
 		function updateUiFileLoaded() {
 			if (file_loaded) {
-				$(".motion-file-ctrl button[name='start']").removeAttr('disabled');
-				$(".motion-file-ctrl button[name='pause']").removeAttr('disabled');
-				$(".motion-file-ctrl button[name='stop']").removeAttr('disabled');
+				$(".motion-file-ctrl button[name='unload']").removeAttr('disabled');
+
+				if (enable_status.motion_file) {
+					$(".motion-file-ctrl button[name='start']").removeAttr('disabled');
+				} else {
+					$(".motion-file-ctrl button[name='start']").attr('disabled', 'disabled');
+				}
 			} else {
+				$(".motion-file-ctrl button[name='unload']").attr('disabled', 'disabled');
 				$(".motion-file-ctrl button[name='start']").attr('disabled', 'disabled');
-				$(".motion-file-ctrl button[name='pause']").attr('disabled', 'disabled');
-				$(".motion-file-ctrl button[name='stop']").attr('disabled', 'disabled');
 			}
 		}
 
@@ -94,6 +91,7 @@
 				return;
 			}
 
+			var status_previous = status;
 			status = st;
 			//console.log(status);
 
@@ -116,7 +114,9 @@
 					enable_status.motion = true;
 					enable_status.motion_file = true;
 
-					sendCmd('STOP');
+					if (status_previous == S_INIT) {
+						sendCmd('STOP');
+					}
 
 					// Faster status polling after successful connection
 					clearInterval(timer_status);
@@ -226,6 +226,10 @@
 						setStatus(S_READY);
 					} else if (status == S_BUSY_DISCONNECTING && result.state == 'Not connected') {
 						setStatus(S_NOT_READY);
+					} else if (status != S_BUSY_FILERUN && result.state == 'Run') {
+						setStatus(S_BUSY_RUN);
+					} else if (result.state == 'Idle') {
+						setStatus(S_READY);
 					}
 
 					updateUiStatus();
@@ -416,6 +420,11 @@
 			file_loaded = false;
 			updateUiFileLoaded();
 			sendCmd('CLEAR_GCODE')
+		}
+
+		function runFile() {
+			sendCmd('RUN')
+			setStatus(S_BUSY_FILERUN);
 		}
 
 		function connect() {
@@ -770,7 +779,7 @@
 							<button name="unload" type="button" class="btn btn-default" title="Close" onclick="clearFile();" disabled=""><i class="fa fa-close"></i></button>
 						</div>
 						<div class="col-xs-2">
-							<button name="start" type="button" class="btn btn-warning" title="Run" onclick="sendCmd('START');" disabled=""><i class="fa fa-play"></i></button>
+							<button name="start" type="button" class="btn btn-warning" title="Run" onclick="runFile();" disabled=""><i class="fa fa-play"></i></button>
 						</div>
 					</div>
 				</div>
