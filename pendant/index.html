@@ -28,7 +28,7 @@
 			S_BUSY_RUN = 4,
 			S_BUSY_FILERUN = 5,
 			S_HOLD = 'hold';
-		var status = S_INIT;
+		var status = -1;
 		var status_previous_ui = S_BUSY;
 		var enable_status = { nav_bar: null, motion: null, motion_file: null };
 		var file_loaded = false;
@@ -90,6 +90,10 @@
 		}
 
 		function setStatus(st) {
+			if (status == st) {
+				return;
+			}
+
 			status = st;
 			//console.log(status);
 
@@ -124,12 +128,13 @@
 					enable_status.motion_file = false;
 					break;
 				case S_INIT:
-					enable_status.nav_bar = true;
+					enable_status.nav_bar = false;
 					enable_status.motion = false;
 					enable_status.motion_file = false;
 
 					// MuchSlower status polling while initializing
 					clearInterval(timer_status);
+					getState();
 					timer_status = setInterval(getState, 2000);
 					break;
 				case S_BUSY_CONNECTING:
@@ -192,6 +197,7 @@
 			$.ajax({
 				url: '/state',
 				dataType: 'json',
+				timeout: 1000,
 				success: function (result, response_status, xhr) {
 					$('#state').html(result.state);
 					$('#state').bgColor = result.color;
@@ -212,12 +218,8 @@
 							$('#spindle').val("100%");
 					}
 
-					//request for comports list
-					if ($('[data-name="select-comport"]').html().trim() == '') {
-						getComPorts();
-					}
-
 					if (status == S_INIT) {
+						getComPorts();
 						setStatus(result.state == 'Not connected' ? S_NOT_READY : S_READY);
 					}
 					else if (status == S_BUSY_CONNECTING && result.state != 'Not connected') {
@@ -227,6 +229,9 @@
 					}
 
 					updateUiStatus();
+				},
+				error: function (xhr, status, error) {
+					setStatus(S_INIT);
 				}
 			});
 		} // getState
@@ -441,6 +446,7 @@
 			sendGcode("$#\n$G\n");
 			getConfig();
 			timer_status = setInterval(getState, 1000);
+			setStatus(S_INIT);
 			/* ASSIGN FUNCTIONS TO UI ELEMENTS */
 		});
 	</script>
