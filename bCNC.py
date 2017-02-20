@@ -1570,6 +1570,20 @@ class Application(Toplevel,Sender):
 		elif cmd == "STOP":
 			self.stopRun()
 
+		# SYS_HALT: shutdown the system
+		elif cmd == "SYS_HALT":
+			if sys.platform.startswith("win") or sys.platform.startswith("cygwin"):
+				os.system("shutdown /s /t 1")
+			else:
+				os.system("sudo shutdown -h now")
+
+		# SYS_REBOOT: restart the system
+		elif cmd == "SYS_REBOOT":
+			if sys.platform.startswith("win") or sys.platform.startswith("cygwin"):
+				os.system("shutdown /r /t 1")
+			else:
+				os.system("sudo shutdown -r now")
+
 		# TAB*S [ntabs] [dtabs] [dx] [dy] [z]: create tabs on selected blocks
 		# default values are taken from the active tab
 		elif rexx.abbrev("TABS",cmd,3):

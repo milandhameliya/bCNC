@@ -103,7 +103,7 @@
 					enable_status.motion = false;
 					enable_status.motion_file = false;
 
-					// Slower status after after disconnected
+					// Slower status polling after disconnected
 					clearInterval(timer_status);
 					timer_status = setInterval(getState, 1000);
 					break;
@@ -114,7 +114,7 @@
 
 					sendCmd('STOP');
 
-					// Faster status after after successful connection
+					// Faster status polling after successful connection
 					clearInterval(timer_status);
 					timer_status = setInterval(getState, 250);
 					break;
@@ -127,6 +127,10 @@
 					enable_status.nav_bar = true;
 					enable_status.motion = false;
 					enable_status.motion_file = false;
+
+					// MuchSlower status polling while initializing
+					clearInterval(timer_status);
+					timer_status = setInterval(getState, 2000);
 					break;
 				case S_BUSY_CONNECTING:
 					enable_status.nav_bar = false;
@@ -419,6 +423,15 @@
 			setStatus(S_BUSY_DISCONNECTING);
 		}
 
+		function shutdown() {
+			sendCmd('SYS_HALT');
+			setStatus(S_INIT);
+		}
+
+		function restart() {
+			sendCmd('SYS_REBOOT');
+			setStatus(S_INIT);
+		}
 
 		/* PERFORM THESE ACTIONS ONCE THE PAGE HAS LOADED */
 		$(document).ready(function () {
@@ -510,8 +523,15 @@
 										<i class="fa fa-undo"></i>&nbsp;Reset
 									</a>
 									<div class="dropdown-divider"></div>
-									<a class="dropdown-item bg-danger" href="#" onclick="disconnect();">
+									<a class="dropdown-item bg-warning" href="#" onclick="disconnect();">
 										<i class="fa fa-ban"></i>&nbsp;Disconnect
+									</a>
+									<div class="dropdown-divider"></div>
+									<a class="dropdown-item bg-warning" href="#" onclick="restart();">
+										<i class="fa fa-ban"></i>&nbsp;Restart
+									</a>
+									<a class="dropdown-item bg-danger" href="#" onclick="shutdown();">
+										<i class="fa fa-ban"></i>&nbsp;Shutdown
 									</a>
 								</div>
 							</div>
@@ -539,7 +559,36 @@
 				</div>
 				<div class="container-fluid disconnected-panel" hidden>
 					<div class="row no-gutter">
-						<div class="col-xs-10">
+						<div class="col-xs-2">
+							<div class="dropdown">
+								<button type="button" class="btn btn-default" id="dropdownMenuLink" class="dropdown-toggle" data-toggle="dropdown">
+									<i class="fa fa-list"></i>
+								</button>
+								<div class="dropdown-menu" role="menu">
+									<a class="dropdown-item" href="#" onclick="sendCmd('HOME');">
+										<i class="fa fa-home"></i>&nbsp;Homing
+									</a>
+									<a class="dropdown-item" href="#" onclick="sendCmd('UNLOCK');">
+										<i class="fa fa-unlock-alt"></i>&nbsp;Unlock
+									</a>
+									<a class="dropdown-item" href="#" onclick="sendCmd('RESET');">
+										<i class="fa fa-undo"></i>&nbsp;Reset
+									</a>
+									<div class="dropdown-divider"></div>
+									<a class="dropdown-item bg-warning" href="#" onclick="disconnect();">
+										<i class="fa fa-ban"></i>&nbsp;Disconnect
+									</a>
+									<div class="dropdown-divider"></div>
+									<a class="dropdown-item bg-danger" href="#" onclick="restart();">
+										<i class="fa fa-refresh"></i>&nbsp;Restart
+									</a>
+									<a class="dropdown-item bg-danger" href="#" onclick="shutdown();">
+										<i class="fa fa-power-off"></i>&nbsp;Shutdown
+									</a>
+								</div>
+							</div>
+						</div>
+						<div class="col-xs-8">
 							<select title="Serial Port" id="comports" class="form-control" data-name="select-comport">
 							</select>
 						</div>
