@@ -13,6 +13,7 @@
 	<script type="text/javascript" src="assets/bootstrap/bootstrap.min.js"></script>
 	<script type="text/javascript" src="assets/fastclick.js"></script>
 	<script type="text/javascript" src="assets/index.js"></script>
+	<script type="text/javascript" src="assets/index_setting_dlg.js"></script>
 </head>
 
 <body>
@@ -39,7 +40,7 @@
 									<a class="dropdown-item" href="#" onclick="sendCmd('RESET');">
 										<i class="fa fa-undo"></i>&nbsp;Reset
 									</a>
-									<a class="dropdown-item" href="#" data-toggle="modal" data-target="#modal_settings">
+									<a class="dropdown-item" href="#" onclick="openSettingDialog();">
 										<i class="fa fa-gear"></i>&nbsp;Settings
 									</a>
 									<div class="dropdown-divider"></div>
@@ -47,11 +48,11 @@
 										<i class="fa fa-ban"></i>&nbsp;Disconnect
 									</a>
 									<div class="dropdown-divider"></div>
-									<a class="dropdown-item bg-warning" href="#" onclick="restart();">
-										<i class="fa fa-ban"></i>&nbsp;Restart
+									<a class="dropdown-item bg-danger" href="#" onclick="restart();">
+										<i class="fa fa-refresh"></i>&nbsp;Restart
 									</a>
 									<a class="dropdown-item bg-danger" href="#" onclick="shutdown();">
-										<i class="fa fa-ban"></i>&nbsp;Shutdown
+										<i class="fa fa-power-off"></i>&nbsp;Shutdown
 									</a>
 								</div>
 							</div>
@@ -85,20 +86,6 @@
 									<i class="fa fa-list"></i>
 								</button>
 								<div class="dropdown-menu" role="menu">
-									<a class="dropdown-item" href="#" onclick="sendCmd('HOME');">
-										<i class="fa fa-home"></i>&nbsp;Homing
-									</a>
-									<a class="dropdown-item" href="#" onclick="sendCmd('UNLOCK');">
-										<i class="fa fa-unlock-alt"></i>&nbsp;Unlock
-									</a>
-									<a class="dropdown-item" href="#" onclick="sendCmd('RESET');">
-										<i class="fa fa-undo"></i>&nbsp;Reset
-									</a>
-									<div class="dropdown-divider"></div>
-									<a class="dropdown-item bg-warning" href="#" onclick="disconnect();">
-										<i class="fa fa-ban"></i>&nbsp;Disconnect
-									</a>
-									<div class="dropdown-divider"></div>
 									<a class="dropdown-item bg-danger" href="#" onclick="restart();">
 										<i class="fa fa-refresh"></i>&nbsp;Restart
 									</a>
@@ -314,15 +301,22 @@
 		<div class="modal-dialog" role="document">
 			<div class="modal-content">
 				<div class="modal-header">
-					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span class="fa fa-times" aria-hidden="true"></span></button>
 					<h4 class="modal-title" id="modalLabel">Settings</h4>
 				</div>
 				<div class="modal-body">
-					<table style="width: 100%">
+					<div class="container-fluid form">
+						<div class="row">
+							<div class="col-sm-6 offset-sm-6 text-xs-center">
+								<button type="button" class="btn btn-default" title="Reload the setting parameters." onclick="getSetting();"><span class="fa fa-refresh"></span></button>
+							</div>
+						</div>
+
 						<!-- Will be populated from Javascript -->
-					</table>
+					</div>
 				</div>
 				<div class="modal-footer">
+					<button type="button" class="btn btn-primary" onclick="saveSetting();">Save</button>
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 				</div>
 			</div>

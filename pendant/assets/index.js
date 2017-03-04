@@ -24,12 +24,12 @@ function updateUiStatus() {
     }
 
     // Show/hide the serial-port connection panel
-    if (isBusy(status_previous_ui) || status_previous_ui == S_INIT) {
-        if (status == S_NOT_READY) {
-            $(".disconnected-panel").removeAttr('hidden');
-            $(".connected-panel").attr('hidden', 'hidden');
-            $(".motion-file-ctrl button[name='upload']").attr('disabled', 'disabled');
-        } else {
+    if (status == S_NOT_READY) {
+        $(".disconnected-panel").removeAttr('hidden');
+        $(".connected-panel").attr('hidden', 'hidden');
+        $(".motion-file-ctrl button[name='upload']").attr('disabled', 'disabled');
+    } else if (isBusy(status_previous_ui) || status_previous_ui == S_INIT) {
+        if (status != S_NOT_READY) {
             $(".connected-panel").removeAttr('hidden');
             $(".disconnected-panel").attr('hidden', 'hidden');
             $(".motion-file-ctrl button[name='upload']").removeAttr('disabled');
@@ -226,6 +226,8 @@ function getState() {
                     setStatus(S_HOLD);
                 } else if (result.state.startsWith('ALARM')) {
                     setStatus(S_HOLD);
+                } else if (result.state == 'Not connected') {
+                    setStatus(S_NOT_READY);
                 }
             }
 
@@ -442,55 +444,6 @@ function shutdown() {
 function restart() {
     sendCmd('SYS_REBOOT');
     setStatus(S_INIT);
-}
-
-var TYPE_CTRL = {
-    INPUT: 0,
-    CHECKBOX: 1,
-}
-function initSettingDialog() {
-    var entries = {
-        data: [],
-        init: function () {
-            this.add('home_enable', 'Homing cycle enable', TYPE_CTRL.CHECKBOX);
-            this.add('home_locate_speed', 'Homing locate feed rate [mm/min]', TYPE_CTRL.CHECKBOX);
-            this.add('home_seek_speed', 'Homing search seek rate [mm/min]', TYPE_CTRL.CHECKBOX);
-            this.add('x_spm', 'X-axis steps per mm', TYPE_CTRL.CHECKBOX);
-            this.add('y_spm', 'Y-axis steps per mm', TYPE_CTRL.CHECKBOX);
-            this.add('z_spm', 'Z-axis steps per mm', TYPE_CTRL.CHECKBOX);
-            this.add('x_speed', 'X-axis maximum rate [mm/min]', TYPE_CTRL.CHECKBOX);
-            this.add('y_speed', 'Y-axis maximum rate [mm/min]', TYPE_CTRL.CHECKBOX);
-            this.add('z_speed', 'Z-axis maximum rate [mm/min]', TYPE_CTRL.CHECKBOX);
-            this.add('x_acc', 'X-axis acceleration [mm/sec^2]', TYPE_CTRL.CHECKBOX);
-            this.add('y_acc', 'Y-axis acceleration [mm/sec^2]', TYPE_CTRL.CHECKBOX);
-            this.add('z_acc', 'Z-axis acceleration [mm/sec^2]', TYPE_CTRL.CHECKBOX);
-        },
-        add: function (id, name, type) {
-            this.data.push({ id: id, name: name, type: type });
-        },
-    }
-
-    entries.init();
-
-    for (var i = 0; i < entries.data.length; i++) {
-        createEntry_SettingDialog(entries.data[i]);
-    }
-}
-
-function createEntry_SettingDialog(entry) {
-    var tr = jQuery("<tr/>");
-    var th = jQuery("<th/>");
-    var td = jQuery("<td/>");
-    var ctrl = jQuery("<input/>", { class: "form-control", name: entry.id });
-
-    th.text(entry.name);
-
-    td.append(ctrl);
-
-    tr.append(th);
-    tr.append(td);
-
-    $("#modal_settings table").append(tr);
 }
 
 /* PERFORM THESE ACTIONS ONCE THE PAGE HAS LOADED */

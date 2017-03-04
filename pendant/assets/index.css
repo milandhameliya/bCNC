@@ -37,3 +37,6 @@ button:disabled:hover {
 .nav-panel .dropdown-menu i {
     width: 15px;
 }
+#modal_settings .form .row{
+    border-bottom: 1px solid whitesmoke;
+}

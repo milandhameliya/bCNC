@@ -95,6 +95,15 @@ class Pendant(HTTPServer.BaseHTTPRequestHandler):
 				tmp[name] = CNC.vars[name]
 			self.wfile.write(json.dumps(tmp))
 
+		elif page == "/setting":
+			self.do_HEAD(200, content="text/text")
+			tmp = {}
+			for name in [22, 24, 25, 100, 101, 102, 110, 111, 112, 120, 121, 122, 130, 131, 132]:
+				name_ext = "grbl_" + str(name)
+				if name_ext in CNC.vars:
+					tmp[name] = CNC.vars[name_ext]
+			self.wfile.write(json.dumps(tmp))
+
 		elif page == "/config":
 			self.do_HEAD(200, content="text/text")
 			snd = {}
