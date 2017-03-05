@@ -48,10 +48,10 @@
 										<i class="fa fa-ban"></i>&nbsp;Disconnect
 									</a>
 									<div class="dropdown-divider"></div>
-									<a class="dropdown-item bg-danger" href="#" onclick="restart();">
+									<a class="dropdown-item bg-danger" href="#" onclick="try_restart();">
 										<i class="fa fa-refresh"></i>&nbsp;Restart
 									</a>
-									<a class="dropdown-item bg-danger" href="#" onclick="shutdown();">
+									<a class="dropdown-item bg-danger" href="#" onclick="try_shutdown();">
 										<i class="fa fa-power-off"></i>&nbsp;Shutdown
 									</a>
 								</div>
@@ -86,10 +86,10 @@
 									<i class="fa fa-list"></i>
 								</button>
 								<div class="dropdown-menu" role="menu">
-									<a class="dropdown-item bg-danger" href="#" onclick="restart();">
+									<a class="dropdown-item bg-danger" href="#" onclick="try_restart();">
 										<i class="fa fa-refresh"></i>&nbsp;Restart
 									</a>
-									<a class="dropdown-item bg-danger" href="#" onclick="shutdown();">
+									<a class="dropdown-item bg-danger" href="#" onclick="try_shutdown();">
 										<i class="fa fa-power-off"></i>&nbsp;Shutdown
 									</a>
 								</div>
@@ -296,7 +296,7 @@
 	</div>-->
 
 
-	<!-- The modal -->
+	<!-- Settings Dialog box -->
 	<div class="modal fade" id="modal_settings" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
 		<div class="modal-dialog" role="document">
 			<div class="modal-content">
@@ -318,6 +318,46 @@
 				<div class="modal-footer">
 					<button type="button" class="btn btn-primary" onclick="saveSetting();">Save</button>
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Shutdown Confirmation Dialog box -->
+	<div class="modal fade" id="modal_confirm_shutdown" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span class="fa fa-times" aria-hidden="true"></span></button>
+					<h4 class="modal-title" id="modalLabel">Are you sure?</h4>
+				</div>
+				<div class="modal-body">
+					<p>Are you sure to <strong>Shutdown</strong> the system?</p>
+					<p>The CNC system/computer will be shutdown once you confirm here.</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-danger" onclick="shutdown();">Shutdown</button>
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Restart Confirmation Dialog box -->
+	<div class="modal fade" id="modal_confirm_restart" tabindex="-1" role="dialog" aria-labelledby="modalLabel" aria-hidden="true">
+		<div class="modal-dialog" role="document">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span class="fa fa-times" aria-hidden="true"></span></button>
+					<h4 class="modal-title" id="modalLabel">Are you sure?</h4>
+				</div>
+				<div class="modal-body">
+					<p>Are you sure to <strong>Restart</strong> the system?</p>
+					<p>The CNC system/computer will be restart once you confirm here.</p>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-danger" onclick="restart();">Restart</button>
+					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
 				</div>
 			</div>
 		</div>

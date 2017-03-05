@@ -436,9 +436,17 @@ function disconnect() {
     setStatus(S_BUSY_DISCONNECTING);
 }
 
+function try_shutdown() {
+    $('#modal_confirm_shutdown').modal('show');
+}
+
 function shutdown() {
     sendCmd('SYS_HALT');
     setStatus(S_INIT);
+}
+
+function try_restart() {
+    $('#modal_confirm_restart').modal('show');
 }
 
 function restart() {

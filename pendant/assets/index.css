@@ -40,3 +40,6 @@ button:disabled:hover {
 #modal_settings .form .row{
     border-bottom: 1px solid whitesmoke;
 }
+#modal_settings .form div[type_id="2"]{
+    padding: .5rem .75rem;
+}
