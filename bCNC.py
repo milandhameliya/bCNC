@@ -1536,6 +1536,10 @@ class Application(Toplevel,Sender):
 		elif rexx.abbrev("STATISTICS",cmd,4):
 			self.showStats()
 
+		# DESELECT*ALL: deselect all
+		elif rexx.abbrev("DESELECTALL",cmd,8):
+			self.editor.selectClear()
+
 		# STEP [s]: set motion step size to s
 		elif cmd == "STEP":
 			try:

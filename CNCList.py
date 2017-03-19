@@ -773,7 +773,12 @@ class CNCListbox(Listbox):
 
 	# ----------------------------------------------------------------------
 	def selectAll(self):
-		self.selection_set(0,END)
+		bid,lid = self._items[0]
+		block = self.gcode[bid]
+		if block.name() in ("Header"):
+			self.selection_set(1,END)
+		else:
+			self.selection_set(0,END)
 
 	# ----------------------------------------------------------------------
 	def selectClear(self):

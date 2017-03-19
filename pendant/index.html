@@ -262,13 +262,18 @@
 						<input name="file" type="file" onchange="fileChange();" />
 					</form>
 					<div class="row no-gutter">
-						<div class="col-xs-8">
+						<div class="col-xs-6">
 							<button name="upload" type="button" class="btn btn-warning jog-x-minus jog-y-minus" title="Upload File" onclick="openFileDialog();">
 								<i class="fa fa-arrow-up" style="padding-right: 5px;"></i><span>Upload File</span>
 							</button>
 						</div>
 						<div class="col-xs-2">
 							<button name="unload" type="button" class="btn btn-default" title="Close" onclick="clearFile();" disabled=""><i class="fa fa-close"></i></button>
+						</div>
+						<div class="col-xs-2">
+							<button name="optimize" type="button" class="btn btn-default jog-x-minus jog-y-minus" title="Optimize" onclick="optimizeDrawing();">
+								<i class="fa fa-flash" style="padding-right: 5px;"></i>
+							</button>
 						</div>
 						<div class="col-xs-2">
 							<button name="start" type="button" class="btn btn-warning" title="Run" onclick="runFile();" disabled=""><i class="fa fa-play"></i></button>

@@ -60,6 +60,7 @@ function updateUiStatus() {
 function updateUiFileLoaded() {
     if (file_loaded) {
         $(".motion-file-ctrl button[name='unload']").removeAttr('disabled');
+        $(".motion-file-ctrl button[name='optimize']").removeAttr('disabled');
 
         if (enable_status.motion_file) {
             $(".motion-file-ctrl button[name='start']").removeAttr('disabled');
@@ -68,6 +69,7 @@ function updateUiFileLoaded() {
         }
     } else {
         $(".motion-file-ctrl button[name='unload']").attr('disabled', 'disabled');
+        $(".motion-file-ctrl button[name='optimize']").attr('disabled', 'disabled');
         $(".motion-file-ctrl button[name='start']").attr('disabled', 'disabled');
     }
 }
@@ -400,6 +402,11 @@ function openFileDialog() {
 }
 
 function fileChange() {
+    clearFile();
+    setTimeout(perform_fileUpload, 800);
+}
+
+function perform_fileUpload() {
     var formData = new FormData($('#upload-file')[0]);
     $.ajax({
         url: '/upload',  //Server script to process data
@@ -419,6 +426,12 @@ function clearFile() {
     file_loaded = false;
     updateUiFileLoaded();
     sendCmd('CLEAR_GCODE')
+}
+
+function optimizeDrawing() {
+    sendCmd('DESELECTALL');
+    sendCmd('ORIENT');
+    sendCmd('OPTIMIZE');
 }
 
 function runFile() {
