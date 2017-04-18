@@ -1046,14 +1046,14 @@ class Sender:
 							elif word[0] == "Ov":
 								CNC.vars["OvFeed"]    = int(word[1])
 								CNC.vars["OvRapid"]   = int(word[2])
-								CNC.vars["OvSpindle"] = int(word[2])
+								CNC.vars["OvSpindle"] = int(word[3])
 							elif word[0] == "WCO":
 								CNC.vars["wcox"] = float(word[1])
 								CNC.vars["wcoy"] = float(word[2])
 								CNC.vars["wcoz"] = float(word[3])
 
 						# Machine is Idle buffer is empty stop waiting and go on
-						if wait and not cline and fields[0]=="Idle":
+						if wait and not cline and fields[0] in ("Idle","Check"):
 							wait = False
 							self._gcount += 1
 
@@ -1080,7 +1080,7 @@ class Sender:
 							# stop waiting and go on
 							#print "<<< WAIT=",wait,sline,pat.group(1),sum(cline)
 							#print ">>>", line
-							if wait and not cline and pat.group(1)=="Idle":
+							if wait and not cline and pat.group(1) in ("Idle","Check"):
 								#print ">>>",line
 								wait = False
 								#print "<<< NO MORE WAIT"
@@ -1101,7 +1101,7 @@ class Sender:
 							self.gcode.probe.add(
 								 CNC.vars["prbx"]-CNC.vars["wcox"],
 								 CNC.vars["prby"]-CNC.vars["wcoy"],
-								 CNC.vars["prbz"]-CNC.vars["wcoy"])
+								 CNC.vars["prbz"]-CNC.vars["wcoz"])
 							self._probeUpdate = True
 							CNC.vars[word[0]] = word[1:]
 						elif word[0] == "GC":
