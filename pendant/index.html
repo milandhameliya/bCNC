@@ -193,7 +193,7 @@
                     		</button>
 						</div>
 						<div class="col-xs-4">
-							<select id="step" class="form-control" data-name="select-distance">
+							<select id="step" title="Select steps to move" class="form-control" data-name="select-distance" onchange="stepSelectionChanged();">
 								<option>0.001</option>
 								<option>0.005</option>
 								<option>0.01</option>
@@ -217,18 +217,15 @@
 							<button type="button" class="btn btn-primary jog-x-minus" title="Move X-" onclick="sendMove('Xd')">X-</button>
 						</div>
 						<div class="col-xs-2">
-							<button type="button" class="btn btn-info jog-xy-zero" title="Move To Zero (G0 X0 Y0 Z0)" onclick="sendMove('O')">
+							<button type="button" class="btn btn-info jog-xy-zero" title="Move To Zero (G0 X0 Y0 Z0)" onclick="sendMove('XOYO')">
 								<i class="fa fa-circle-o"></i>
 							</button>
 						</div>
 						<div class="col-xs-2">
 							<button type="button" class="btn btn-primary jog-x-plus" title="Move X+" onclick="sendMove('Xu')">X+</button>
 						</div>
-						<div class="col-xs-2">
-							<button type="button" class="btn btn-info jog-x-zero" title="Move To X Zero (G0 X0)" onclick="sendMove('XO')">X0</button>
-						</div>
-						<div class="col-xs-2">
-							<button type="button" class="btn btn-info jog-y-zero" title="Move To Y Zero (G0 Y0)" onclick="sendMove('YO')">Y0</button>
+						<div class="col-xs-4">
+							<input type="number" id="step_input" title="Enter steps to move" class="form-control" value="1" />
 						</div>
 						<div class="col-xs-2">
 							<button type="button" class="btn btn-info jog-z-zero" title="Move To Z Zero (G0 Z0)" onclick="sendMove('ZO')">Z0</button>
@@ -248,7 +245,11 @@
 								<i class="fa fa-arrow-circle-down rotate-45"></i>
 							</button>
 						</div>
-						<div class="col-xs-4">
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-info jog-x-zero" title="Move To X Zero (G0 X0)" onclick="sendMove('XO')">X0</button>
+						</div>
+						<div class="col-xs-2">
+							<button type="button" class="btn btn-info jog-y-zero" title="Move To Y Zero (G0 Y0)" onclick="sendMove('YO')">Y0</button>
 						</div>
 						<div class="col-xs-2">
 							<button type="button" class="btn btn-primary jog-z-minus" title="Move Z-" onclick="sendMove('Zd')">Z-</button>

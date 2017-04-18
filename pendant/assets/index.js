@@ -47,9 +47,11 @@ function updateUiStatus() {
     if (enable_status.motion) {
         $(".motion-ctrl button").removeAttr('disabled');
         $(".motion-ctrl select").removeAttr('disabled');
+        $(".motion-ctrl input").removeAttr('disabled');
     } else {
         $(".motion-ctrl button").attr('disabled', 'disabled');
         $(".motion-ctrl select").attr('disabled', 'disabled');
+        $(".motion-ctrl input").attr('disabled', 'disabled');
     }
 
     updateUiFileLoaded();
@@ -344,10 +346,13 @@ function coolantChange() {
 
 function sendMove(command) {
     gcode = "G91G0";
-    step = $('#step option:selected').text();
+    step = parseFloat($('#step_input').val());
+    if (step === NaN) {
+        step = parseFloat($('#step option:selected').text());
+    }
     switch (command) {
-        case 'O':
-            gcode = "G90G0X0Y0Z0";
+        case 'XOYO':
+            gcode = "G90G0X0Y0";
             break;
         case 'XO':
             gcode = "G90G0X0";
@@ -395,6 +400,11 @@ function sendMove(command) {
     sendGcode(gcode);
     sendGcode("G90");
 } // sendMove
+
+function stepSelectionChanged() {
+    step = $('#step option:selected').text();
+    $('#step_input').val(step);
+}
 
 function openFileDialog() {
     $('#upload-file')[0].reset();
