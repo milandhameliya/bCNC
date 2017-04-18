@@ -217,7 +217,7 @@
 							<button type="button" class="btn btn-primary jog-x-minus" title="Move X-" onclick="sendMove('Xd')">X-</button>
 						</div>
 						<div class="col-xs-2">
-							<button type="button" class="btn btn-info jog-xy-zero" title="Move To Zero (G0 X0 Y0 Z0)" onclick="sendMove('XOYOZO')">
+							<button type="button" class="btn btn-info jog-xy-zero" title="Move To Zero (G0 X0 Y0 Z0)" onclick="sendMove('O')">
 								<i class="fa fa-circle-o"></i>
 							</button>
 						</div>
@@ -321,7 +321,8 @@
 					</div>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-primary" onclick="saveSetting();">Save</button>
+					<button type="button" class="btn btn-primary" onclick="saveSettingAndRefresh();">Save</button>
+					<button type="button" class="btn btn-primary" data-dismiss="modal" onclick="saveSetting();">Save &amp; Close</button>
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
 				</div>
 			</div>
@@ -341,7 +342,7 @@
 					<p>The CNC system/computer will be shutdown once you confirm here.</p>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-danger" onclick="shutdown();">Shutdown</button>
+					<button type="button" class="btn btn-danger" data-dismiss="modal" onclick="shutdown();">Shutdown</button>
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
 				</div>
 			</div>
@@ -361,7 +362,7 @@
 					<p>The CNC system/computer will be restart once you confirm here.</p>
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn btn-danger" onclick="restart();">Restart</button>
+					<button type="button" class="btn btn-danger" data-dismiss="modal" onclick="restart();">Restart</button>
 					<button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
 				</div>
 			</div>

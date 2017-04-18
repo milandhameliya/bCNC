@@ -123,6 +123,13 @@ function getSetting() {
     setTimeout(getSetting_soft, 500);
 }
 
+function saveSettingAndRefresh() {
+    saveSetting();
+
+    // Refresh the settings after saving it
+    setTimeout(getSetting, 250);
+}
+
 function saveSetting() {
     var inputs = jQuery("#modal_settings input");
     for (var i = 0; i < inputs.length; i++) {
@@ -132,9 +139,6 @@ function saveSetting() {
             sendGcode("$" + id + "=" + inputs[i].value);
         }
     }
-
-    // Refresh the settings after saving it
-    setTimeout(getSetting, 250);
 }
 
 function handleResponse_SettingDialog(result) {
